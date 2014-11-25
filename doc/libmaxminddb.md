@@ -364,6 +364,8 @@ status codes are:
   happen. The lookup path could include a key not in a map. The lookup path
   could include an array index larger than an array. It can also happen when
   the path expect to find a map or array where none exist.
+* `MMDB_LOOKUP_PATH_IS_TOO_LONG` - The lookup path passed to `MMDB_get_value`
+  or `MMDB_vget_value` has more than 500 elements.
 
 All status codes should be treated as `int` values.
 
@@ -562,10 +564,11 @@ regardless of which function you call.
 
 The `MMDB_get_value` function takes a variable number of arguments. All of the
 arguments after the `MMDB_entry_data_s *` structure pointer are the lookup
-path.
+path. The path cannot contain more than 500 elements.
 
 The `MMDB_vget_value` function accepts a `va_list` as the lookup path. The
-last element retrieved by `va_arg()` must be `NULL`.
+last element retrieved by `va_arg()` must be `NULL`. The path cannot contain
+more than 500 elements.
 
 Finally, the `MMDB_aget_value` accepts an array of strings as the lookup
 path. The last member of this array must be `NULL`.

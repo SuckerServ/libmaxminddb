@@ -138,6 +138,7 @@ LOCAL int populate_result(MMDB_s *mmdb, uint32_t node_count, uint32_t value,
                           uint16_t netmask, MMDB_lookup_result_s *result);
 LOCAL uint32_t get_left_28_bit_record(const uint8_t *record);
 LOCAL uint32_t get_right_28_bit_record(const uint8_t *record);
+LOCAL void free_path(const char *path[], int i);
 LOCAL int lookup_path_in_array(const char *path_elem, MMDB_s *mmdb,
                                MMDB_entry_data_s *entry_data);
 LOCAL int lookup_path_in_map(const char *path_elem, MMDB_s *mmdb,
@@ -877,44 +878,47 @@ int MMDB_get_value(MMDB_entry_s *const start,
     return status;
 }
 
+#define MAX_PATH_ELEMENTS 500
+
 int MMDB_vget_value(MMDB_entry_s *const start,
                     MMDB_entry_data_s *const entry_data,
                     va_list va_path)
 {
-    const char **path = NULL;
+    /* This is an arbitrary length restriction, but it's insanely long so
+       hopefully it's good enough for any possible database someone might
+       produce. */
+    const char *path[MAX_PATH_ELEMENTS];
 
     int i = 0;
     const char *path_elem;
     while (NULL != (path_elem = va_arg(va_path, char *))) {
-        path = realloc(path, sizeof(const char *) * (i + 1));
-        if (NULL == path) {
-            return MMDB_OUT_OF_MEMORY_ERROR;
+        if (i == MAX_PATH_ELEMENTS) {
+            return MMDB_LOOKUP_PATH_IS_TOO_LONG;
         }
 
         path[i] = mmdb_strdup(path_elem);
         if (NULL == path[i]) {
-            free(path);
+            free_path(path, i - 1);
             return MMDB_OUT_OF_MEMORY_ERROR;
         }
         i++;
     }
 
-    path = realloc(path, sizeof(char *) * (i + 1));
-    if (NULL == path) {
-        return MMDB_OUT_OF_MEMORY_ERROR;
-    }
     path[i] = NULL;
 
     int status = MMDB_aget_value(start, entry_data, path);
 
-    i = 0;
-    while (NULL != path[i]) {
-        free((void *)path[i]);
-        i++;
-    }
-    free(path);
+    free_path(path, i);
 
     return status;
+}
+
+LOCAL void free_path(const char *path[], int i)
+{
+    while (i >= 0) {
+        free((void *)path[i]);
+        i--;
+    }
 }
 
 int MMDB_aget_value(MMDB_entry_s *const start,
@@ -1786,6 +1790,9 @@ const char *MMDB_strerror(int error_code)
     case MMDB_LOOKUP_PATH_DOES_NOT_MATCH_DATA_ERROR:
         return
             "The lookup path does not match the data (key that doesn't exist, array index bigger than the array, expected array or map where none exists)";
+    case MMDB_LOOKUP_PATH_IS_TOO_LONG:
+        return
+            "The lookup path contains more than 500 separate elements";
     case MMDB_INVALID_NODE_NUMBER_ERROR:
         return
             "The MMDB_read_node function was called with a node number that does not exist in the search tree";

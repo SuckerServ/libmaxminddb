@@ -5,6 +5,11 @@
 * Documentation fix. Federico G. Schwindt. GitHub PR #50.
 * Added Visual Studio build files and fixed incorrect CreateFileMappingA
   usage. Patch by Andre. GitHub #52.
+* Removed use of `realloc()` in the library code. This caused warnings on
+  Windows, and was just not necessary. The `MMDB_get_value()` and
+  `MMDB_vget_value()` may return a new error code,
+  `MMDB_LOOKUP_PATH_IS_TOO_LONG`, if given a varargs list of more than 500
+  elements.
 
 
 ## 1.0.2 - 2014-09-22
